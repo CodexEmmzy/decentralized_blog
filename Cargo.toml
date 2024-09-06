@@ -3,6 +3,8 @@ name = "decentralized_blog"
 version = "0.1.8"
 edition = "2021"
 license = "MIT OR Apache-2.0"
+repository = "https://github.com/OffchainLabs/stylus-hello-world"
+homepage = "https://github.com/OffchainLabs/stylus-hello-world"
 keywords = ["arbitrum", "ethereum", "stylus", "alloy"]
 description = "Stylus hello world example"
 

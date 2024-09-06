@@ -1,16 +1,29 @@
+// Conditionally compile the program without a main function, unless "export-abi" feature is enabled.
 #![cfg_attr(not(feature = "export-abi"), no_main)]
 
+// Set up a global memory allocator using MiniAlloc for efficient memory management in the smart contract.
 #[global_allocator]
 static ALLOC: mini_alloc::MiniAlloc = mini_alloc::MiniAlloc::INIT;
 
+// Import the alloc crate to enable heap allocations in a no-std environment.
 extern crate alloc;
+
+
+// Import necessary types and functions from the Stylus SDK and Alloy Primitives crates.
+// These include U256 for large integers, Address for user addresses, and various
+// storage types for managing data on the blockchain.
 
 use stylus_sdk::{alloy_primitives::U256, prelude::*};
 use alloy_primitives::{Address, Uint};
 use stylus_sdk::{block, console};
 use stylus_sdk::storage::{StorageString, StorageVec};
 
-// Define persistent storage using the Solidity ABI.
+
+
+// Define the storage structure for the Blog smart contract using the sol_storage! macro.
+// This structure contains mappings to store information such as the number of posts,
+// post content, user token balances, referrals, and more.
+
 sol_storage! {
     #[entrypoint]
     pub struct Blog {
@@ -28,14 +41,21 @@ sol_storage! {
 // Declare that `Blog` is a contract with the following external methods.
 #[external]
 impl Blog {
-    // Users can purchase tokens to create posts.
+
+    // Implement the Blog smart contract.
+    // This function allows users to purchase tokens by adding the specified amount to their balance.
+
     pub fn purchase_tokens(&mut self, user_address: Address, amount: Uint<256, 4>) {
         let mut token_balance_accessor = self.token_balances.setter(user_address);
         let current_balance = token_balance_accessor.get();
         token_balance_accessor.set(current_balance + amount);
     }
 
-    // Users can create a new post by spending tokens, choosing a category.
+   // This function allows users to create a new post by spending tokens.
+   // It checks if the user has enough tokens and if at least 5 seconds have passed since their last post.
+   // If valid, it updates the post count, stores the post content and category, deducts the tokens,
+   // updates the last post creation time, and emits a successful post creation event.
+
     pub fn create_post(&mut self, user_address: Address, category: String, content: String) -> bool {
         let token_balance = self.token_balances.get(user_address);
         let post_price = U256::from(1); // Each post costs 1 token
@@ -81,7 +101,11 @@ impl Blog {
         }
     }
 
-    // Update the leaderboard by counting the total posts created by each user.
+
+
+    // This function updates the leaderboard by increasing the referral count for the user.
+    // It emits an event to log the updated referral count.
+
     fn update_leaderboard(&mut self, user_address: Address) {
         let mut referral_accessor = self.referral_counts.setter(user_address);
         let current_referrals = referral_accessor.get() + U256::from(1);
@@ -91,7 +115,10 @@ impl Blog {
         console!("Leaderboard updated: User {:?} has {:?} referrals", user_address, current_referrals);
     }
 
-    // Users can refer new users to earn additional tokens.
+
+    // This function updates the leaderboard by increasing the referral count for the user.
+    // It emits an event to log the updated referral count.
+
     pub fn refer_user(&mut self, referrer: Address, _new_user: Address) {
         let mut referral_accessor = self.referral_counts.setter(referrer);
         let current_referrals = referral_accessor.get() + U256::from(1);
@@ -100,7 +127,11 @@ impl Blog {
         console!("Referral successful: User {:?} referred {:?}", referrer, _new_user);
     }
 
-      // Users can comment on a post
+
+
+      // This function allows users to add comments to a specific post.
+      // The comment is stored in a vector associated with the post ID, and a log message is generated.
+
       pub fn comment_on_post(&mut self, post_id: U256, comment: String) {
         // Get the current `StorageVec` for the comments associated with the post_id
         let mut comments_accessor = self.post_comments.setter(post_id);
@@ -113,7 +144,12 @@ impl Blog {
 
         console!("Comment added to post ID {:?}: {:?}", post_id, comment);
     }
-    // Users can donate to a post
+
+
+    // This function allows users to donate tokens to a specific post.
+    // It checks if the user has enough tokens, then deducts the donation amount from their balance,
+    // adds it to the post's donation total, and logs a confirmation message.
+
     pub fn donate_to_post(&mut self, post_id: U256, amount: Uint<256, 4>) {
         let mut donation_accessor = self.post_donations.setter(post_id);
         let current_donations = donation_accessor.get();
